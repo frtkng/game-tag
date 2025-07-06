@@ -89,7 +89,7 @@ resource "aws_instance" "tag_game" {
     dnf install -y git
     curl -fsSL https://rpm.nodesource.com/setup_18.x | bash -
     dnf install -y nodejs
-    git clone https://github.com/YOUR_GITHUB/tag-game.git /opt/tag-game
+    git clone https://github.com/frtkng/game-tag.git /opt/tag-game
     cd /opt/tag-game
     npm install --omit=dev
     nohup npm start > /var/log/tag-game.log 2>&1 &
