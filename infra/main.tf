@@ -99,17 +99,21 @@ resource "aws_instance" "tag_game" {
   vpc_security_group_ids = [aws_security_group.tag_game_sg.id]
 
   user_data = <<-EOF
-    #!/bin/bash
-    set -eux
-    dnf -y update
-    dnf install -y git
-    curl -fsSL https://rpm.nodesource.com/setup_18.x | bash -
-    dnf install -y nodejs
-    git clone https://github.com/frtkng/game-tag.git /opt/tag-game
-    cd /opt/tag-game
-    npm install --omit=dev
-    nohup npm start > /var/log/tag-game.log 2>&1 &
-  EOF
+  #!/bin/bash
+  set -eux
+  dnf install -y git
+  curl -fsSL https://rpm.nodesource.com/setup_18.x | bash -
+  dnf install -y nodejs
+  if [ -d /opt/tag-game ]; then
+    git -C /opt/tag-game pull
+  else
+    git clone https://github.com/<your>/tag-game.git /opt/tag-game
+  fi
+  cd /opt/tag-game
+  npm install --omit=dev
+  pkill -f "node src/server.js" || true
+  nohup node src/server.js > /var/log/tag-game.log 2>&1 &
+EOF
 
   tags = { Name = "tag-game" }
 }
