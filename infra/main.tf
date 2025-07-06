@@ -14,9 +14,22 @@ terraform {
 #####################
 #  Variables
 #####################
-variable "aws_region"  { default = "ap-northeast-1" }      # 東京リージョン
-variable "instance_type" { default = "t3.micro" }
-variable "key_name" { description = "既存の EC2 キーペア名" }
+variable "aws_region" {
+  description = "デプロイ先リージョン"
+  type        = string
+  default     = "ap-northeast-1"   # 東京
+}
+
+variable "instance_type" {
+  description = "EC2 インスタンスタイプ"
+  type        = string
+  default     = "t3.micro"
+}
+
+variable "key_name" {
+  description = "既存の EC2 キーペア名（必須）"
+  type        = string
+}
 
 #####################
 #  Provider
@@ -28,7 +41,7 @@ provider "aws" {
 #####################
 #  Base network
 #####################
-data "aws_vpc" "default" {               # デフォルト VPC
+data "aws_vpc" "default" {
   default = true
 }
 
@@ -36,28 +49,31 @@ data "aws_vpc" "default" {               # デフォルト VPC
 #  Security Group
 #####################
 resource "aws_security_group" "tag_game_sg" {
-  name        = "tag-game-sg"
+  name_prefix = "tag-game-"                     # ← 衝突を避ける
   description = "Allow SSH + TCP 3000"
   vpc_id      = data.aws_vpc.default.id
 
-  ingress {                    # SSH
+  ingress {
+    description = "SSH"
     from_port   = 22
     to_port     = 22
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
-  ingress {                    # ゲーム用
+  ingress {
+    description = "Game port"
     from_port   = 3000
     to_port     = 3000
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
-  egress {                     # 全許可
+  egress {
     from_port   = 0
     to_port     = 0
     protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
   }
+
   tags = { Name = "tag-game-sg" }
 }
 
@@ -65,8 +81,8 @@ resource "aws_security_group" "tag_game_sg" {
 #  AMI (Amazon Linux 2023)
 #####################
 data "aws_ami" "al2023" {
-  most_recent = true
   owners      = ["amazon"]
+  most_recent = true
   filter {
     name   = "name"
     values = ["al2023-ami-*-x86_64"]
@@ -77,15 +93,15 @@ data "aws_ami" "al2023" {
 #  EC2 instance
 #####################
 resource "aws_instance" "tag_game" {
-  ami           = data.aws_ami.al2023.id
-  instance_type = var.instance_type
-  key_name      = var.key_name
+  ami                    = data.aws_ami.al2023.id
+  instance_type          = var.instance_type
+  key_name               = var.key_name
   vpc_security_group_ids = [aws_security_group.tag_game_sg.id]
 
-   user_data = <<-EOF
+  user_data = <<-EOF
     #!/bin/bash
     set -eux
-    dnf update -y
+    dnf -y update
     dnf install -y git
     curl -fsSL https://rpm.nodesource.com/setup_18.x | bash -
     dnf install -y nodejs
