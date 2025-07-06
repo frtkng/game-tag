@@ -1,0 +1,44 @@
+########################################
+#  Node.js / npm
+########################################
+node_modules/                 # 依存パッケージ（毎回再生成）
+npm-debug.log*                # npm 実行時の一時ログ
+yarn-debug.log*
+yarn-error.log*
+package-lock.json             # ロックファイルをコミットしない方針ならコメント解除
+# pnpm-lock.yaml
+
+########################################
+#  アプリの一時ファイル・ビルド成果物
+########################################
+dist/                         # トランスパイル／バンドル生成物（存在する場合）
+coverage/                     # テストカバレッジ
+*.log                         # 任意のログ
+*.tgz                         # `npm pack` などで出来る tarball
+*.pid                         # PM2 などの PID
+*.bak
+*.tmp
+
+########################################
+#  環境変数・秘匿情報
+########################################
+.env
+.env.*                        # .env.local / .env.production など
+
+########################################
+#  Terraform  (infra/)
+########################################
+infra/.terraform/             # provider プラグイン & キャッシュ
+infra/terraform.tfstate       # 状態ファイル
+infra/terraform.tfstate.*     # バックアップファイル
+infra/.terraform.lock.hcl     # lock ファイルを共有しない場合
+
+########################################
+#  OS・エディタごみ
+########################################
+.DS_Store
+Thumbs.db
+Icon?
+.idea/                        # JetBrains IDE
+.vscode/                      # VS Code 設定を共有しない場合
+*.sw?                         # Vim swap

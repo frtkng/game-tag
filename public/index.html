@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="ja"><head>
+<meta charset="UTF-8"/><title>Simple Tag Game</title>
+<style>
+body{margin:0;display:flex;justify-content:center;align-items:center;height:100vh;background:#20252c;color:#eee;font-family:sans-serif;}
+canvas{background:#3a3f4b;}
+#msg{position:fixed;top:10px;font-size:18px;}
+</style>
+</head><body>
+<canvas id="c" width="600" height="600"></canvas>
+<div id="msg"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/socket.io@4.7.5/client-dist/socket.io.min.js"></script>
+<script>
+const socket = io();
+const cvs = document.getElementById('c');
+const ctx = cvs.getContext('2d');
+const msg = document.getElementById('msg');
+let meId=null, players={};
+
+socket.on('connect',()=>meId=socket.id);
+socket.on('state',s=>{players=s; draw();});
+socket.on('message',m=>{ msg.textContent=m; setTimeout(()=>msg.textContent='',3000);});
+
+document.addEventListener('keydown',e=>{
+  const dir = {x:0,y:0};
+  if(e.key==='ArrowUp')   dir.y=-1;
+  if(e.key==='ArrowDown') dir.y= 1;
+  if(e.key==='ArrowLeft') dir.x=-1;
+  if(e.key==='ArrowRight')dir.x= 1;
+  if(dir.x||dir.y) socket.emit('move',dir);
+});
+
+function draw(){
+  ctx.clearRect(0,0,600,600);
+  for(const [id,p] of Object.entries(players)){
+    ctx.fillStyle = id===meId ? '#4cf' : (p.isHunter?'#e33':'#3e3');
+    ctx.beginPath();
+    ctx.arc(p.x,p.y,10,0,Math.PI*2);
+    ctx.fill();
+  }
+  requestAnimationFrame(draw);
+}
+</script>
+</body></html>
