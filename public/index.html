@@ -1,45 +1,90 @@
 <!DOCTYPE html>
-<html lang="ja"><head>
-<meta charset="UTF-8"/><title>Simple Tag Game</title>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<title>鬼ごっこ – Tag Game</title>
 <style>
-body{margin:0;display:flex;justify-content:center;align-items:center;height:100vh;background:#20252c;color:#eee;font-family:sans-serif;}
-canvas{background:#3a3f4b;}
-#msg{position:fixed;top:10px;font-size:18px;}
+  body{margin:0;display:flex;justify-content:center;align-items:center;height:100vh;background:#20252c;color:#eee;font-family:sans-serif;}
+  canvas{background:#3a3f4b;border-radius:6px;}
+  #title{position:fixed;top:5px;width:100%;text-align:center;font-size:28px;font-weight:bold;}
+  #instruction{position:fixed;top:45px;width:100%;text-align:center;font-size:24px;}
+  #msg{position:fixed;top:85px;width:100%;text-align:center;font-size:20px;pointer-events:none}
+  #timer{position:fixed;top:115px;width:100%;text-align:center;font-size:18px}
+  #help{position:fixed;bottom:10px;width:100%;text-align:center;font-size:16px;color:#ccc}
 </style>
-</head><body>
+</head>
+<body>
+
+<div id="title">鬼ごっこ</div>
+<div id="instruction">ロード中…</div>
 <canvas id="c" width="600" height="600"></canvas>
 <div id="msg"></div>
+<div id="timer"></div>
+<div id="help">←↑↓→キーで移動 / 鬼は30秒以内に誰かにタッチ！ 逃げは逃げ切れば勝ち！</div>
 
 <script src="https://cdn.jsdelivr.net/npm/socket.io@4.7.5/client-dist/socket.io.min.js"></script>
 <script>
-const socket = io();
-const cvs = document.getElementById('c');
-const ctx = cvs.getContext('2d');
-const msg = document.getElementById('msg');
-let meId=null, players={};
+/* ===== DOM ===== */
+const cvs=document.getElementById('c'),ctx=cvs.getContext('2d');
+const instr=document.getElementById('instruction'),msg=document.getElementById('msg'),timerDiv=document.getElementById('timer');
 
-socket.on('connect',()=>meId=socket.id);
-socket.on('state',s=>{players=s; draw();});
-socket.on('message',m=>{ msg.textContent=m; setTimeout(()=>msg.textContent='',3000);});
+/* ===== 状態 ===== */
+let myId=null, players={}, myScore=0, roundEnd=0, obstacles=[];
 
-document.addEventListener('keydown',e=>{
-  const dir = {x:0,y:0};
-  if(e.key==='ArrowUp')   dir.y=-1;
-  if(e.key==='ArrowDown') dir.y= 1;
-  if(e.key==='ArrowLeft') dir.x=-1;
-  if(e.key==='ArrowRight')dir.x= 1;
+/* ===== 入力 ===== */
+const k={ArrowUp:0,ArrowDown:0,ArrowLeft:0,ArrowRight:0};
+addEventListener('keydown',e=>{if(e.key in k){k[e.key]=1;e.preventDefault()}});
+addEventListener('keyup',e=>{if(e.key in k){k[e.key]=0;e.preventDefault()}});
+window.addEventListener('blur',()=>document.activeElement.blur());
+
+/* ===== ソケット ===== */
+const socket=io();
+socket.on('connect',()=>myId=socket.id);
+socket.on('map',obs=>{obstacles=obs});
+socket.on('state',s=>{players=s;myScore=players[myId]?.score??0;updateInstr()});
+socket.on('round',end=>{roundEnd=end});
+socket.on('message',t=>{msg.textContent=t;setTimeout(()=>msg.textContent='',2500)});
+
+/* ===== 定数 ===== */
+const SIZE=32, FONT=`${SIZE}px serif`; const H='😈',R='😀',M='😎';
+
+/* ===== ループ ===== */
+function loop(){
+  const dir={x:k.ArrowRight-k.ArrowLeft,y:k.ArrowDown-k.ArrowUp};
   if(dir.x||dir.y) socket.emit('move',dir);
-});
 
+  /* 残り秒表示 */
+  if(roundEnd){timerDiv.textContent='残り '+Math.max(0,Math.ceil((roundEnd-Date.now())/1000))+' 秒';}
+  draw(); requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+
+/* ===== 描画 ===== */
 function draw(){
   ctx.clearRect(0,0,600,600);
+
+  /* 障害物 */
+  ctx.fillStyle='#555';
+  obstacles.forEach(o=>ctx.fillRect(o.x,o.y,o.w,o.h));
+
+  /* スコア */
+  ctx.fillStyle='#fff'; ctx.font='16px sans-serif'; ctx.textAlign='left'; ctx.textBaseline='top';
+  ctx.fillText('Score:'+myScore,10,8);
+
+  /* プレイヤー */
+  ctx.font=FONT; ctx.textAlign='center'; ctx.textBaseline='middle';
   for(const [id,p] of Object.entries(players)){
-    ctx.fillStyle = id===meId ? '#4cf' : (p.isHunter?'#e33':'#3e3');
-    ctx.beginPath();
-    ctx.arc(p.x,p.y,10,0,Math.PI*2);
-    ctx.fill();
+    const me=id===myId, emo=p.isHunter?H:(me?M:R);
+    if(me){ctx.beginPath();ctx.arc(p.x,p.y,SIZE/2+4,0,7);ctx.strokeStyle='#ffd700';ctx.lineWidth=3;ctx.stroke();}
+    ctx.fillText(emo,p.x,p.y);
   }
-  requestAnimationFrame(draw);
+}
+
+/* ===== インストラクション ===== */
+function updateInstr(){
+  const me=players[myId]; if(!me){instr.textContent='ロード中…';return;}
+  instr.textContent = me.isHunter ? '▶ タッチしよう！◀' : '▶ 鬼から逃げろ！◀';
 }
 </script>
-</body></html>
+</body>
+</html>
